@@ -1,0 +1,21 @@
+{
+  "init_tasks": [
+    {
+      "command": "go run server.go",
+      "nowait": true
+    }
+  ],
+  "watchers": [
+    {
+      "extension": "go",
+      "tasks": [
+        {
+          "command": "killall server"
+        }, {
+          "command": "go run server.go",
+          "nowait": true
+        }
+      ]
+    }
+  ]
+}
