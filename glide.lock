@@ -1,30 +1,43 @@
-hash: 208ca172a45921cf650bbba8ee36480d7a93404296f7b3d404178c2af6753da9
-updated: 2016-06-09T11:06:15.529411487-04:00
+hash: 965cc35909f52356b32fd4b145f5d0af0c655ae2211cc0d73b19c2a093fb1fb7
+updated: 2017-02-05T17:49:09.544656295-05:00
 imports:
-- name: github.com/gin-gonic/gin
-  version: f931d1ea80ae95a6fc739213cdd9399bd2967fb6
+- name: github.com/go-sql-driver/mysql
+  version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+- name: github.com/labstack/echo
+  version: a8b6864be328fcb5c2d96d32c75b750f84e0e4be
+- name: github.com/labstack/gommon
+  version: f72d3c883f8ea180da8f085dd320804c41332ad1
   subpackages:
-  - binding
-  - render
-- name: github.com/golang/protobuf
-  version: 2402d76f3d41f928c7902a765dfc872356dd3aad
-  subpackages:
-  - proto
-- name: github.com/manucorporat/sse
-  version: ee05b128a739a0fb76c7ebd3ae4810c1de808d6d
+  - color
+  - log
+- name: github.com/mattn/go-colorable
+  version: d228849504861217f796da67fae4f6e347643f15
+- name: github.com/mattn/go-isatty
+  version: 30a891c33c7cde7b02a981314b4228ec99380cca
+- name: github.com/valyala/bytebufferpool
+  version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
+- name: github.com/valyala/fasttemplate
+  version: d090d65668a286d9a180d43a19dfdc5dcad8fe88
 - name: github.com/yosssi/goat
   version: 1c6c74f7f1492614ac18069c4bfbeae608f97b43
   subpackages:
   - '...'
-  - config
-  - consts
-  - context
+- name: golang.org/x/crypto
+  version: bed12803fa9663d7aa2c2346b0c634ad2dcd43b7
+  subpackages:
+  - acme/autocert
+  - acme
 - name: golang.org/x/net
   version: f315505cf3349909cdf013ea56690da34e96a451
   subpackages:
   - context
-- name: gopkg.in/go-playground/validator.v8
-  version: c193cecd124b5cc722d7ee5538e945bdb3348435
-- name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  - context/ctxhttp
+- name: golang.org/x/sys
+  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  subpackages:
+  - unix
 devImports: []
