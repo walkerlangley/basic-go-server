@@ -1,5 +1,5 @@
-hash: 965cc35909f52356b32fd4b145f5d0af0c655ae2211cc0d73b19c2a093fb1fb7
-updated: 2017-02-05T17:49:09.544656295-05:00
+hash: 253601b91e89ad2a37fb9b3495fadfb5ac0a479def3a8749289a13a4f0918743
+updated: 2017-02-07T20:51:49.268534157-05:00
 imports:
 - name: github.com/go-sql-driver/mysql
   version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
@@ -7,6 +7,8 @@ imports:
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
   version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+- name: github.com/jmoiron/sqlx
+  version: f980a91bdc37abef88269b8f122d7de6352102f5
 - name: github.com/labstack/echo
   version: a8b6864be328fcb5c2d96d32c75b750f84e0e4be
 - name: github.com/labstack/gommon
@@ -27,7 +29,7 @@ imports:
   subpackages:
   - '...'
 - name: golang.org/x/crypto
-  version: bed12803fa9663d7aa2c2346b0c634ad2dcd43b7
+  version: 22ddb68eccda408bbf17759ac18d3120ce0d4f3f
   subpackages:
   - acme/autocert
   - acme
