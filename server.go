@@ -66,45 +66,48 @@ func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	title := vars["title"]
 
-	var resp []Book
-	resp, err = GetBooksBy("title", title)
+	var book Book
+	err = db.Get(&book, "SELECT * FROM books WHERE title = ?", title)
 	if err != nil {
-		log.Println("Error querying added book", err)
+		fmt.Println("Error getting book: ", title, ' ', err)
 	}
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(book)
 }
 
 func GetBooksByAuthor(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
 
-	var resp []Book
-	resp, err = GetBooksBy("author", author)
+	var books []Book
+
+	err = db.Select(&books, "SELECT * FROM books WHERE author = ?", author)
 	if err != nil {
-		log.Println("Error querying added book", err)
+		log.Println("Error Getting Rows", err)
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(books)
 }
 
 func GetBooksBy(filter string, id interface{}) ([]Book, error) {
 
 	var result []Book
+
+	log.Println("FILTER AND STRING", filter, " ", id)
 	var buffer bytes.Buffer
 	buffer.WriteString("SELECT * FROM books WHERE ")
 	buffer.WriteString(filter)
 	buffer.WriteString(" = ?")
 	err = db.Select(&result, buffer.String(), id)
-
 	if err != nil {
 		log.Println("Error querying db: ", err)
 		return nil, err
 	}
 
+	log.Println("RESULTS OF GET BY:", result)
 	return result, nil
 }
 
-func GetAllBooks(w http.ResponseWriter, r *http.Request) {
+func GetBooks(w http.ResponseWriter, r *http.Request) {
 
 	var books []Book
 	err = db.Select(&books, "SELECT * FROM books")
@@ -150,6 +153,9 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(resp)
+	//log.Println("Query Result: ", insertedId)
+
+	//json.NewEncoder(w).Encode(book)
 }
 
 func main() {
@@ -179,14 +185,10 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", sayHelloName)
 	api.HandleFunc("/login", login)
-	api.HandleFunc("/books", GetAllBooks).Methods("GET")
+	api.HandleFunc("/books", GetBooks).Methods("GET")
 	api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
 	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
 	api.HandleFunc("/book", AddBook).Methods("POST")
-
-	//---------------------------
-	// Create the Server
-	//---------------------------
 	server := &http.Server{
 		Handler: router,
 		Addr:    "127.0.0.1:" + port,
