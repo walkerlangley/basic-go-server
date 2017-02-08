@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -61,144 +62,59 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
-//vars := mux.Vars(r)
-//title := vars["title"]
+func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	title := vars["title"]
 
-//stmt, err := db.Prepare("SELECT * FROM books WHERE title = ?")
-//if err != nil {
-//fmt.Println("Error preparing query statement: ", err)
-//}
-//var book Book
-//var ID string
-//var Title string
-//var Author string
-//var Description sql.NullString
-//var ImageUrl sql.NullString
-//var Notes sql.NullString
-//var YearWritten sql.NullString
-//var Read bool
-//err = stmt.QueryRow(title).Scan(&ID, &Title, &Author, &Description, &ImageUrl, &Notes, &YearWritten, &Read)
-//switch {
-//case err == sql.ErrNoRows:
-//log.Printf("No book with that title")
-//case err != nil:
-//log.Fatal(err)
-//default:
-//book.ID = ID
-//book.Title = Title
-//book.Author = Author
-//book.Description = Description.String
-//book.ImageUrl = ImageUrl.String
-//book.Notes = Notes.String
-//book.YearWritten = YearWritten.String
-//book.Read = Read
-//}
-//json.NewEncoder(w).Encode(book)
-//}
+	var book Book
+	err = db.Get(&book, "SELECT * FROM books WHERE title = ?", title)
+	if err != nil {
+		fmt.Println("Error getting book: ", title, ' ', err)
+	}
+	json.NewEncoder(w).Encode(book)
+}
 
-//func GetBooksByAuthor(w http.ResponseWriter, r *http.Request) {
-//vars := mux.Vars(r)
-//author := vars["author"]
-
-//stmt, err := db.Prepare("SELECT * FROM books WHERE author = ?")
-//if err != nil {
-//fmt.Println("Error preparing query statement: ", err)
-//}
-//var book Book
-//var books []Book
-
-//rows, err := stmt.Query(author)
-//if err != nil {
-//log.Println("Error Getting Rows", err)
-//}
-
-//defer rows.Close()
-
-//for rows.Next() {
-//var ID string
-//var Title string
-//var Author string
-//var Description sql.NullString
-//var ImageUrl sql.NullString
-//var Notes sql.NullString
-//var YearWritten sql.NullString
-//var Read bool
-
-//if err := rows.Scan(&ID, &Title, &Author, &Description, &ImageUrl, &Notes, &YearWritten, &Read); err != nil {
-//log.Println("Error in Rows: ", err)
-//}
-
-//book.ID = ID
-//book.Title = Title
-//book.Author = Author
-//book.Description = Description.String
-//book.ImageUrl = ImageUrl.String
-//book.Notes = Notes.String
-//book.YearWritten = YearWritten.String
-//book.Read = Read
-//books = append(books, book)
-//}
-//err = rows.Err()
-//if err != nil {
-//log.Fatal(err)
-//}
-//json.NewEncoder(w).Encode(book)
-//}
-
-func GetBooks(w http.ResponseWriter, r *http.Request) {
+func GetBooksByAuthor(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
 
 	var books []Book
-	//stmt, err := db.Prepare("SELECT * FROM books")
-	//if err != nil {
-	//fmt.Println("Error preparing the query statement: ", err)
-	//}
-	err = db.Select(&books, "SELECT * FROM books")
 
-	//rows, err := stmt.Queryx()
+	err = db.Select(&books, "SELECT * FROM books WHERE author = ?", author)
 	if err != nil {
 		log.Println("Error Getting Rows", err)
 	}
 
-	//defer rows.Close()
+	json.NewEncoder(w).Encode(books)
+}
 
-	//for rows.Next() {
-	//// This is another way of scanning into the struct, but lose types since everything is an interface
-	//col, _ := rows.Columns()
-	//numCols := len(col)
+func GetBooksBy(filter string, id interface{}) ([]Book, error) {
 
-	//rowStruct := make([]interface{}, numCols)
-	//if err := rows.Scan(&rowStruct...); err != nil {
-	//log.Println("Error in Rows: ", err)
-	//}
+	var result []Book
 
-	//var ID string
-	//var Title string
-	//var Author string
-	//var Description sql.NullString // Could also use a pointer to a string instead of sql.NullString since pointers can be null
-	//var ImageUrl sql.NullString
-	//var Notes sql.NullString
-	//var YearWritten sql.NullString
-	//var Read bool
+	log.Println("FILTER AND STRING", filter, " ", id)
+	var buffer bytes.Buffer
+	buffer.WriteString("SELECT * FROM books WHERE ")
+	buffer.WriteString(filter)
+	buffer.WriteString(" = ?")
+	err = db.Select(&result, buffer.String(), id)
+	if err != nil {
+		log.Println("Error querying db: ", err)
+		return nil, err
+	}
 
-	//if err := rows.Scan(&ID, &Title, &Author, &Description, &ImageUrl, &Notes, &YearWritten, &Read); err != nil {
-	//log.Println("Error in Rows: ", err)
-	//}
+	log.Println("RESULTS OF GET BY:", result)
+	return result, nil
+}
 
-	//book.ID = ID
-	//book.Title = Title
-	//book.Author = Author
-	//book.Description = Description.String
-	//book.ImageUrl = ImageUrl.String
-	//book.Notes = Notes.String
-	//book.YearWritten = YearWritten.String
-	//book.Read = Read
-	//books = append(books, book)
-	//}
-	//err = rows.Err()
-	//if err != nil {
-	//log.Fatal(err)
-	//}
+func GetBooks(w http.ResponseWriter, r *http.Request) {
+
+	var books []Book
+	err = db.Select(&books, "SELECT * FROM books")
+
+	if err != nil {
+		log.Println("Error Getting Rows", err)
+	}
 
 	json.NewEncoder(w).Encode(books)
 }
@@ -224,9 +140,22 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error Creating Record", err)
 	}
 
-	log.Println("Query Result: ", result.LastInsertId)
+	insertedId, err := result.LastInsertId()
+	if err != nil {
+		log.Println("Error getting id of inserted book", err)
+	}
 
-	log.Println("BODY: ", book)
+	var resp []Book
+
+	resp, err = GetBooksBy("id", insertedId)
+	if err != nil {
+		log.Println("Error querying added book", err)
+	}
+
+	json.NewEncoder(w).Encode(resp)
+	//log.Println("Query Result: ", insertedId)
+
+	//json.NewEncoder(w).Encode(book)
 }
 
 func main() {
@@ -257,8 +186,8 @@ func main() {
 	api.HandleFunc("/", sayHelloName)
 	api.HandleFunc("/login", login)
 	api.HandleFunc("/books", GetBooks).Methods("GET")
-	//api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
-	//api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
+	api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
+	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
 	api.HandleFunc("/book", AddBook).Methods("POST")
 	server := &http.Server{
 		Handler: router,
