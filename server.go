@@ -109,6 +109,7 @@ func GetBooksBy(filter string, id interface{}) ([]Book, error) {
 
 func GetBooks(w http.ResponseWriter, r *http.Request) {
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	var books []Book
 	err = db.Select(&books, "SELECT * FROM books")
 
@@ -120,6 +121,8 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddBook(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Error reading body: ", err)
@@ -152,7 +155,7 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error querying added book", err)
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(resp[0])
 	//log.Println("Query Result: ", insertedId)
 
 	//json.NewEncoder(w).Encode(book)
@@ -173,7 +176,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-
+	//router.Headers("Access-Control-Allow-Origin", "*")
 	//---------------------------
 	// Health Check
 	//---------------------------
@@ -182,6 +185,7 @@ func main() {
 	//---------------------------
 	// Main routes
 	//---------------------------
+	//api := router.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", sayHelloName)
 	api.HandleFunc("/login", login)
@@ -190,7 +194,7 @@ func main() {
 	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
 	api.HandleFunc("/book", AddBook).Methods("POST")
 	server := &http.Server{
-		Handler: router,
+		Handler: &MyServer{router},
 		Addr:    "127.0.0.1:" + port,
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
@@ -198,4 +202,24 @@ func main() {
 	}
 	log.Println("Server started on port: " + port)
 	log.Fatal(server.ListenAndServe()) // pass the router as the 2nd argument to ListenAndServe
+}
+
+type MyServer struct {
+	r *mux.Router
+}
+
+// This is to get CORS to work on OPTIONS.  There has to be a better way, yeah???
+func (s *MyServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if origin := req.Header.Get("Origin"); origin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", origin)
+		rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		rw.Header().Set("Access-Control-Allow-Headers",
+			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	}
+	// Stop here if its Preflighted OPTIONS request
+	if req.Method == "OPTIONS" {
+		return
+	}
+	// Lets Gorilla work
+	s.r.ServeHTTP(rw, req)
 }

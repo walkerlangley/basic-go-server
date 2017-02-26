@@ -1,8 +1,5 @@
 package: ""
 import:
-- package: github.com/yosssi/goat
-  subpackages:
-  - '...'
 - package: github.com/gorilla/mux
 - package: github.com/go-sql-driver/mysql
 - package: github.com/jmoiron/sqlx
