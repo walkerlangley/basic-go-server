@@ -1,45 +1,47 @@
-hash: 253601b91e89ad2a37fb9b3495fadfb5ac0a479def3a8749289a13a4f0918743
-updated: 2017-02-07T20:51:49.268534157-05:00
+hash: 37d7ffed234feef0cc4756f12edca8d57348369516cebd32f5d0fd9bd26ff293
+updated: 2017-02-26T15:28:20.57969064-05:00
 imports:
 - name: github.com/go-sql-driver/mysql
   version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
+- name: github.com/golang/crypto
+  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+  version: 999ef73f5d50979cf6d12afed1726325b63f9570
 - name: github.com/jmoiron/sqlx
-  version: f980a91bdc37abef88269b8f122d7de6352102f5
+  version: f4076845477b10ac2453a16377a8383467aafe72
+  subpackages:
+  - reflectx
 - name: github.com/labstack/echo
-  version: a8b6864be328fcb5c2d96d32c75b750f84e0e4be
+  version: 049518f8c46759fe645a7be1c71b5bc76bc27eaa
 - name: github.com/labstack/gommon
-  version: f72d3c883f8ea180da8f085dd320804c41332ad1
+  version: e8995fb26e646187d33cff439b18609cfba23088
   subpackages:
   - color
   - log
 - name: github.com/mattn/go-colorable
-  version: d228849504861217f796da67fae4f6e347643f15
+  version: d898aa9fb31c91f35dd28ca75db377eff023c076
 - name: github.com/mattn/go-isatty
-  version: 30a891c33c7cde7b02a981314b4228ec99380cca
+  version: dda3de49cbfcec471bd7a70e6cc01fcc3ff90109
 - name: github.com/valyala/bytebufferpool
   version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
 - name: github.com/valyala/fasttemplate
-  version: d090d65668a286d9a180d43a19dfdc5dcad8fe88
-- name: github.com/yosssi/goat
-  version: 1c6c74f7f1492614ac18069c4bfbeae608f97b43
-  subpackages:
-  - '...'
+  version: dcecefd839c4193db0d35b88ec65b4c12d360ab0
 - name: golang.org/x/crypto
-  version: 22ddb68eccda408bbf17759ac18d3120ce0d4f3f
+  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
   - acme/autocert
   - acme
 - name: golang.org/x/net
-  version: f315505cf3349909cdf013ea56690da34e96a451
+  version: 10c134ea0df15f7e34d789338c7a2d76cc7a3ab9
   subpackages:
   - context
   - context/ctxhttp
 - name: golang.org/x/sys
-  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  version: e4594059fe4cde2daf423055a596c2cd1e6c9adf
   subpackages:
   - unix
+- name: https://github.com/golang/crypto/
+  version: ""
 devImports: []

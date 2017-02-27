@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -14,10 +15,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Book struct {
 	ID          string  `json:"id" db:"id"`
+	UserId      string  `json: "userId" db:"userId"`
 	Title       string  `json:"title" db:"title"`
 	Author      string  `json:"author" db:"author"`
 	Description *string `json:"description,omitempty" db:"description,omitempty"`
@@ -25,6 +28,21 @@ type Book struct {
 	Notes       *string `json:"notes,omitempty" db:"notes,omitempty"`
 	YearWritten *string `json:"yearWritten,omitempty" db:"yearWritten,omitempty"`
 	Read        bool    `json:"read" db:"read"`
+}
+
+type User struct {
+	ID        string `json:"id" db:"id"`
+	FirstName string `json:"firstName" db:"firstName"`
+	LastName  string `json:"lastName" db:"lastName"`
+	Username  string `json:"username" db:"username"`
+	Password  string `json:"password" db:"password"`
+}
+
+type UserPayload struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
 }
 
 var port = "4001"
@@ -161,6 +179,112 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 	//json.NewEncoder(w).Encode(book)
 }
 
+func createAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Error reading request body:", err)
+		w.Write([]byte("Sorry, looks like something broke.  Please try again"))
+		return
+	}
+
+	var tmpUser UserPayload
+	err = json.Unmarshal(body, &tmpUser)
+	if err != nil {
+		log.Println("Error unmarshaling into user: ", err)
+		w.Write([]byte("Sorry, it looks like something was wrong with one of the fiels.  Please try again"))
+		return
+	}
+
+	var existing User
+
+	err = db.Get(&existing, "SELECT * FROM users WHERE username = ?", tmpUser.Username)
+	if err == nil {
+		log.Println("error getting user?", err)
+		w.Write([]byte("it looks like there already exists a user with that username.  please try again"))
+		return
+	}
+
+	if err != sql.ErrNoRows {
+		log.Println("Error something other than sql.ErrNoRows...", err)
+	}
+
+	password := tmpUser.Password
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Println("Error generating hash: ", err)
+		w.Write([]byte("Unfortunate it looks like there was an error with your password.  Please try again"))
+		return
+	}
+
+	var user User
+	user.FirstName = tmpUser.FirstName
+	user.LastName = tmpUser.LastName
+	user.Username = tmpUser.Username
+	user.Password = string(hash[:])
+
+	stmt, err := db.Prepare("INSERT INTO `users`(`firstName`, `lastName`, `userName`, `password`) VALUES(?,?,?,?);")
+	if err != nil {
+		fmt.Println("Error preparing the query statement: ", err)
+		w.Write([]byte("Sorry, it looks like there was an error saving your account info.  Please try again"))
+		return
+	}
+	_, err = stmt.Exec(user.FirstName, user.LastName, user.Username, user.Password)
+	if err != nil {
+		log.Println("Error Creating Record", err)
+		w.Write([]byte("Sorry, it looks like there was an error saving your account info.  Please try again"))
+		return
+	}
+
+	w.Write([]byte("ok!"))
+
+}
+
+func signIn(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Error reading request body:", err)
+		w.Write([]byte("Error reading request body"))
+		return
+	}
+
+	var tmpUser UserPayload
+	err = json.Unmarshal(body, &tmpUser)
+	if err != nil {
+		log.Println("Error unmarshaling into user: ", err)
+		w.Write([]byte("Error unmarshaling into user"))
+		return
+	}
+
+	password := tmpUser.Password
+
+	var user User
+
+	err = db.Get(&user, "SELECT * FROM users WHERE username = ?", tmpUser.Username)
+
+	if err != nil {
+		log.Println("Error getting user: ", err)
+		w.Write([]byte("Error getting user."))
+		return
+	}
+
+	hash := user.Password
+
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		log.Println("Error when comparing password and hash")
+		w.Write([]byte("Unfortunately that password doesn't match our records.  Please try again"))
+		return
+	}
+
+	w.Write([]byte("ok!"))
+}
+
 func main() {
 
 	db, err = sqlx.Open("mysql", "root:@/library")
@@ -189,6 +313,8 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", sayHelloName)
 	api.HandleFunc("/login", login)
+	api.HandleFunc("/createAccount", createAccount).Methods("POST")
+	api.HandleFunc("/signIn", signIn).Methods("POST")
 	api.HandleFunc("/books", GetBooks).Methods("GET")
 	api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
 	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")

@@ -3,3 +3,5 @@ import:
 - package: github.com/gorilla/mux
 - package: github.com/go-sql-driver/mysql
 - package: github.com/jmoiron/sqlx
+- package: https://github.com/golang/crypto/
+- package: github.com/golang/crypto
