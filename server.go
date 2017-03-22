@@ -353,7 +353,7 @@ func main() {
 	//}
 	//log.Println("Server started on port: " + port)
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"http://localhost:8080*"},
 		AllowCredentials: true,
 	})
 
