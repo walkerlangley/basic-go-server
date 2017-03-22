@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 
 type Book struct {
 	ID          string  `json:"id" db:"id"`
-	UserId      string  `json: "userId" db:"userId"`
+	UserId      int     `json:"userId" db:"userId"`
 	Title       string  `json:"title" db:"title"`
 	Author      string  `json:"author" db:"author"`
 	Description *string `json:"description,omitempty" db:"description,omitempty"`
@@ -45,7 +46,12 @@ type UserPayload struct {
 	Password  string `json:"password"`
 }
 
-var port = "4001"
+type LoginPayload struct {
+	Username string
+	Password string
+}
+
+var port = "3000"
 var db *sqlx.DB
 var err error
 
@@ -66,19 +72,20 @@ func sayHelloName(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hey there!")
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method: ", r.Method)
-	if r.Method == "GET" {
-		t, _ := template.ParseFiles("login.gtpl")
-		t.Execute(w, "ok!")
-		return
-	} else {
-		r.ParseForm()
-		fmt.Println("username: ", r.Form["username"])
-		fmt.Println("password: ", r.Form["password"])
-	}
+// Not using this.  Just keeping around so I can see how to parse forms
+//func login(w http.ResponseWriter, r *http.Request) {
+//fmt.Println("method: ", r.Method)
+//if r.Method == "GET" {
+//t, _ := template.ParseFiles("login.gtpl")
+//t.Execute(w, "ok!")
+//return
+//} else {
+//r.ParseForm()
+//fmt.Println("username: ", r.Form["username"])
+//fmt.Println("password: ", r.Form["password"])
+//}
 
-}
+//}
 
 func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -88,6 +95,8 @@ func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
 	err = db.Get(&book, "SELECT * FROM books WHERE title = ?", title)
 	if err != nil {
 		fmt.Println("Error getting book: ", title, ' ', err)
+		http.Error(w, "Error getting book", 400)
+		return
 	}
 	json.NewEncoder(w).Encode(book)
 }
@@ -101,6 +110,8 @@ func GetBooksByAuthor(w http.ResponseWriter, r *http.Request) {
 	err = db.Select(&books, "SELECT * FROM books WHERE author = ?", author)
 	if err != nil {
 		log.Println("Error Getting Rows", err)
+		http.Error(w, "Error Getting Rows", 400)
+		return
 	}
 
 	json.NewEncoder(w).Encode(books)
@@ -128,11 +139,15 @@ func GetBooksBy(filter string, id interface{}) ([]Book, error) {
 func GetBooks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	vars := mux.Vars(r)
+	userId := vars["userId"]
 	var books []Book
-	err = db.Select(&books, "SELECT * FROM books")
+	err = db.Select(&books, "SELECT * FROM books WHERE userId = ?", userId)
 
 	if err != nil {
 		log.Println("Error Getting Rows", err)
+		http.Error(w, "Error Getting Rows", 400)
+		return
 	}
 
 	json.NewEncoder(w).Encode(books)
@@ -144,26 +159,36 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Error reading body: ", err)
+		http.Error(w, "Error reading body", 400)
+		return
 	}
 
 	var book Book
 	err = json.Unmarshal(body, &book)
 	if err != nil {
 		log.Println("Error Unmarshallin body: ", err)
+		http.Error(w, "Error unmarshaling body", 400)
+		return
 	}
 
 	stmt, err := db.Prepare("INSERT INTO `books`(`title`, `author`, `description`, `imageUrl`, `notes`, `yearWritten`, `read`) VALUES(?,?,?,?,?,?,?);")
 	if err != nil {
 		fmt.Println("Error preparing the query statement: ", err)
+		http.Error(w, "Error preparing the query statement", 400)
+		return
 	}
 	result, err := stmt.Exec(book.Title, book.Author, book.Description, book.ImageUrl, book.Notes, book.YearWritten, book.Read)
 	if err != nil {
 		log.Println("Error Creating Record", err)
+		http.Error(w, "Error Creating Record", 400)
+		return
 	}
 
 	insertedId, err := result.LastInsertId()
 	if err != nil {
 		log.Println("Error getting id of inserted book", err)
+		http.Error(w, "Error getting id of inserted book", 400)
+		return
 	}
 
 	var resp []Book
@@ -171,6 +196,8 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 	resp, err = GetBooksBy("id", insertedId)
 	if err != nil {
 		log.Println("Error querying added book", err)
+		http.Error(w, "Error querying added book", 400)
+		return
 	}
 
 	json.NewEncoder(w).Encode(resp[0])
@@ -184,16 +211,14 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("Error reading request body:", err)
-		w.Write([]byte("Sorry, looks like something broke.  Please try again"))
+		http.Error(w, "Sorry, looks like something broke.  Please try again", 404)
 		return
 	}
 
 	var tmpUser UserPayload
 	err = json.Unmarshal(body, &tmpUser)
 	if err != nil {
-		log.Println("Error unmarshaling into user: ", err)
-		w.Write([]byte("Sorry, it looks like something was wrong with one of the fiels.  Please try again"))
+		http.Error(w, "Sorry, it looks like something was wrong with one of the fields.  Please try again", 404)
 		return
 	}
 
@@ -201,13 +226,14 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 	err = db.Get(&existing, "SELECT * FROM users WHERE username = ?", tmpUser.Username)
 	if err == nil {
-		log.Println("error getting user?", err)
-		w.Write([]byte("it looks like there already exists a user with that username.  please try again"))
+		http.Error(w, "Alread a user", 404)
 		return
 	}
 
 	if err != sql.ErrNoRows {
 		log.Println("Error something other than sql.ErrNoRows...", err)
+		http.Error(w, "Some error....", 500)
+		return
 	}
 
 	password := tmpUser.Password
@@ -215,7 +241,7 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Println("Error generating hash: ", err)
-		w.Write([]byte("Unfortunate it looks like there was an error with your password.  Please try again"))
+		http.Error(w, "Unfortunate it looks like there was an error with your password.  Please try again", 404)
 		return
 	}
 
@@ -228,48 +254,47 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 	stmt, err := db.Prepare("INSERT INTO `users`(`firstName`, `lastName`, `userName`, `password`) VALUES(?,?,?,?);")
 	if err != nil {
 		fmt.Println("Error preparing the query statement: ", err)
-		w.Write([]byte("Sorry, it looks like there was an error saving your account info.  Please try again"))
+		http.Error(w, "Sorry, it looks like there was an error saving your account info.  Please try again", 404)
 		return
 	}
 	_, err = stmt.Exec(user.FirstName, user.LastName, user.Username, user.Password)
 	if err != nil {
 		log.Println("Error Creating Record", err)
-		w.Write([]byte("Sorry, it looks like there was an error saving your account info.  Please try again"))
+		http.Error(w, "Sorry, it looks like there was an error saving your account info.  Please try again", 404)
 		return
 	}
 
-	w.Write([]byte("ok!"))
+	w.Write([]byte("OK!"))
 
 }
 
-func signIn(w http.ResponseWriter, r *http.Request) {
+func Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Error reading request body:", err)
-		w.Write([]byte("Error reading request body"))
+		http.Error(w, "Error reading request body", 404)
 		return
 	}
 
-	var tmpUser UserPayload
+	var tmpUser LoginPayload
 	err = json.Unmarshal(body, &tmpUser)
 	if err != nil {
 		log.Println("Error unmarshaling into user: ", err)
-		w.Write([]byte("Error unmarshaling into user"))
+		http.Error(w, "Error unmarshaling into user", 404)
 		return
 	}
 
 	password := tmpUser.Password
-
 	var user User
-
 	err = db.Get(&user, "SELECT * FROM users WHERE username = ?", tmpUser.Username)
 
 	if err != nil {
 		log.Println("Error getting user: ", err)
-		w.Write([]byte("Error getting user."))
+		http.Error(w, "Error getting user.", 404)
 		return
 	}
 
@@ -278,15 +303,15 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
 		log.Println("Error when comparing password and hash")
-		w.Write([]byte("Unfortunately that password doesn't match our records.  Please try again"))
+		http.Error(w, "Unfortunately that password doesn't match our records.  Please try again", 404)
 		return
 	}
 
-	w.Write([]byte("ok!"))
+	json.NewEncoder(w).Encode(user)
 }
 
 func main() {
-
+	log.Println("Own Process Identifier: ", strconv.Itoa(os.Getpid()))
 	db, err = sqlx.Open("mysql", "root:@/library")
 	if err != nil {
 		log.Println("Error connecting to db: ", err.Error())
@@ -312,10 +337,10 @@ func main() {
 	//api := router.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", sayHelloName)
-	api.HandleFunc("/login", login)
+	api.HandleFunc("/login", Login).Methods("POST")
 	api.HandleFunc("/createAccount", createAccount).Methods("POST")
-	api.HandleFunc("/signIn", signIn).Methods("POST")
-	api.HandleFunc("/books", GetBooks).Methods("GET")
+	//api.HandleFunc("/signUp", signUp).Methods("POST")
+	api.HandleFunc("/books/{userId}", GetBooks).Methods("GET")
 	api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
 	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
 	api.HandleFunc("/book", AddBook).Methods("POST")
