@@ -11,11 +11,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
+	"github.com/julienschmidt/httprouter"
+	"github.com/rs/cors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -324,53 +325,59 @@ func main() {
 		log.Println("Error on db ping: ", err.Error())
 	}
 
-	router := mux.NewRouter()
+	router := httprouter.New()
 	//router.Headers("Access-Control-Allow-Origin", "*")
 	//---------------------------
 	// Health Check
 	//---------------------------
-	router.HandleFunc("/health", healthCheck)
+	router.HandlerFunc("GET", "/health", healthCheck)
 
 	//---------------------------
 	// Main routes
 	//---------------------------
 	//api := router.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
-	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/", sayHelloName)
-	api.HandleFunc("/login", Login).Methods("POST")
-	api.HandleFunc("/createAccount", createAccount).Methods("POST")
+	//api := router.PathPrefix("/api").Subrouter()
+	router.HandlerFunc("POST", "/login", Login)
+	router.HandlerFunc("POST", "/createAccount", createAccount)
 	//api.HandleFunc("/signUp", signUp).Methods("POST")
-	api.HandleFunc("/books/{userId}", GetBooks).Methods("GET")
-	api.HandleFunc("/book/title/{title}", GetBookByTitle).Methods("GET")
-	api.HandleFunc("/books/author/{author}", GetBooksByAuthor).Methods("GET")
-	api.HandleFunc("/book", AddBook).Methods("POST")
-	server := &http.Server{
-		Handler: &MyServer{router},
-		Addr:    "127.0.0.1:" + port,
-		// Good practice: enforce timeouts for servers you create!
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-	}
-	log.Println("Server started on port: " + port)
-	log.Fatal(server.ListenAndServe()) // pass the router as the 2nd argument to ListenAndServe
+	router.HandlerFunc("GET", "/books/{userId}", GetBooks)
+	router.HandlerFunc("GET", "/book/title/{title}", GetBookByTitle)
+	router.HandlerFunc("GET", "/books/author/{author}", GetBooksByAuthor)
+	router.HandlerFunc("POST", "/book", AddBook)
+	//server := &http.Server{
+	//Handler: &MyServer{router},
+	//Addr:    "127.0.0.1:" + port,
+	//// Good practice: enforce timeouts for servers you create!
+	//WriteTimeout: 15 * time.Second,
+	//ReadTimeout:  15 * time.Second,
+	//}
+	//log.Println("Server started on port: " + port)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+	})
+
+	// Insert the middleware
+	handler := c.Handler(router)
+	log.Fatal(http.ListenAndServe(":3000", handler)) // pass the router as the 2nd argument to ListenAndServe
 }
 
-type MyServer struct {
-	r *mux.Router
-}
+//type MyServer struct {
+//r *mux.Router
+//}
 
-// This is to get CORS to work on OPTIONS.  There has to be a better way, yeah???
-func (s *MyServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if origin := req.Header.Get("Origin"); origin != "" {
-		rw.Header().Set("Access-Control-Allow-Origin", origin)
-		rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		rw.Header().Set("Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	}
-	// Stop here if its Preflighted OPTIONS request
-	if req.Method == "OPTIONS" {
-		return
-	}
-	// Lets Gorilla work
-	s.r.ServeHTTP(rw, req)
-}
+//// This is to get CORS to work on OPTIONS.  There has to be a better way, yeah???
+//func (s *MyServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+//if origin := req.Header.Get("Origin"); origin != "" {
+//rw.Header().Set("Access-Control-Allow-Origin", origin)
+//rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+//rw.Header().Set("Access-Control-Allow-Headers",
+//"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+//}
+//// Stop here if its Preflighted OPTIONS request
+//if req.Method == "OPTIONS" {
+//return
+//}
+//// Lets Gorilla work
+//s.r.ServeHTTP(rw, req)
+//}
