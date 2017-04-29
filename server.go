@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"github.com/julienschmidt/httprouter"
-	//"github.com/rs/cors"
+	"github.com/rs/cors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -330,56 +330,17 @@ func main() {
 	}
 
 	r := httprouter.New()
-	////r.Headers("Access-Control-Allow-Origin", "*")
-	////---------------------------
-	//// Health Check
-	////---------------------------
-	//r.HandlerFunc("GET", "/health", healthCheck)
-
-	////---------------------------
-	//// Main routes
-	////---------------------------
-	////api := r.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
-	////api := r.PathPrefix("/api").Subrouter()
-	//r.HandlerFunc("POST", "/login", Login)
-	//r.HandlerFunc("POST", "/createAccount", createAccount)
-	////api.HandleFunc("/signUp", signUp).Methods("POST")
-	//r.HandlerFunc("GET", "/books/{userId}", GetBooks)
-	//r.HandlerFunc("GET", "/book/title/{title}", GetBookByTitle)
-	//r.HandlerFunc("GET", "/books/author/{author}", GetBooksByAuthor)
-	//r.HandlerFunc("POST", "/book", AddBook)
-
-	//r.GET("/health", healthCheck)
-
-	//---------------------------
-	// Main routes
-	//---------------------------
-	//api := r.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
-	//api := r.PathPrefix("/api").Subrouter()
 	r.POST("/login", Login)
-	//r.POST("/createAccount", createAccount)
-	//api.HandleFunc("/signUp", signUp).Methods("POST")
-	//r.GET("/books/{userId}", GetBooks)
-	//r.GET("/book/title/{title}", GetBookByTitle)
-	//r.GET("/books/author/{author}", GetBooksByAuthor)
-	//r.POST("/book", AddBook)
-	//server := &http.Server{
-	//Handler: &MyServer{r},
-	//Addr:    "127.0.0.1:" + port,
-	//// Good practice: enforce timeouts for servers you create!
-	//WriteTimeout: 15 * time.Second,
-	//ReadTimeout:  15 * time.Second,
-	//}
-	//log.Println("Server started on port: " + port)
+
 	//c := cors.New(cors.Options{
 	//AllowedOrigins:   []string{"*"},
+	//AllowedMethods:   []string{"GET", "POST", "DELETE"},
 	//AllowCredentials: true,
 	//})
 
-	// Insert the middleware
-	//handler := c.Handler(r)
-	//handler := cors.Default().Handler(r)
-	log.Fatal(http.ListenAndServe(":3000", &Server{r})) // pass the router as the 2nd argument to ListenAndServe
+	handler := cors.Default().Handler(r)
+
+	log.Fatal(http.ListenAndServe(":3000", handler)) // pass the router as the 2nd argument to ListenAndServe
 }
 
 type Server struct {
