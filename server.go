@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/cors"
+	//"github.com/rs/cors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -231,6 +231,8 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("\n\n\n Look Here: ", tmpUser)
+
 	if err != sql.ErrNoRows {
 		log.Println("Error something other than sql.ErrNoRows...", err)
 		http.Error(w, "Some error....", 500)
@@ -269,7 +271,7 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
+func Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
@@ -289,6 +291,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("\n\n\n Logging IN: ", tmpUser)
 	password := tmpUser.Password
 	var user User
 	err = db.Get(&user, "SELECT * FROM users WHERE username = ?", tmpUser.Username)
@@ -307,6 +310,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unfortunately that password doesn't match our records.  Please try again", 404)
 		return
 	}
+	log.Println("HERE!!!")
 
 	json.NewEncoder(w).Encode(user)
 }
@@ -325,41 +329,66 @@ func main() {
 		log.Println("Error on db ping: ", err.Error())
 	}
 
-	router := httprouter.New()
-	//router.Headers("Access-Control-Allow-Origin", "*")
-	//---------------------------
-	// Health Check
-	//---------------------------
-	router.HandlerFunc("GET", "/health", healthCheck)
+	r := httprouter.New()
+	////r.Headers("Access-Control-Allow-Origin", "*")
+	////---------------------------
+	//// Health Check
+	////---------------------------
+	//r.HandlerFunc("GET", "/health", healthCheck)
+
+	////---------------------------
+	//// Main routes
+	////---------------------------
+	////api := r.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
+	////api := r.PathPrefix("/api").Subrouter()
+	//r.HandlerFunc("POST", "/login", Login)
+	//r.HandlerFunc("POST", "/createAccount", createAccount)
+	////api.HandleFunc("/signUp", signUp).Methods("POST")
+	//r.HandlerFunc("GET", "/books/{userId}", GetBooks)
+	//r.HandlerFunc("GET", "/book/title/{title}", GetBookByTitle)
+	//r.HandlerFunc("GET", "/books/author/{author}", GetBooksByAuthor)
+	//r.HandlerFunc("POST", "/book", AddBook)
+
+	//r.GET("/health", healthCheck)
 
 	//---------------------------
 	// Main routes
 	//---------------------------
-	//api := router.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
-	//api := router.PathPrefix("/api").Subrouter()
-	router.HandlerFunc("POST", "/login", Login)
-	router.HandlerFunc("POST", "/createAccount", createAccount)
+	//api := r.PathPrefix("/api").Headers("Access-Control-Allow-Origin", "*").Subrouter()
+	//api := r.PathPrefix("/api").Subrouter()
+	r.POST("/login", Login)
+	//r.POST("/createAccount", createAccount)
 	//api.HandleFunc("/signUp", signUp).Methods("POST")
-	router.HandlerFunc("GET", "/books/{userId}", GetBooks)
-	router.HandlerFunc("GET", "/book/title/{title}", GetBookByTitle)
-	router.HandlerFunc("GET", "/books/author/{author}", GetBooksByAuthor)
-	router.HandlerFunc("POST", "/book", AddBook)
+	//r.GET("/books/{userId}", GetBooks)
+	//r.GET("/book/title/{title}", GetBookByTitle)
+	//r.GET("/books/author/{author}", GetBooksByAuthor)
+	//r.POST("/book", AddBook)
 	//server := &http.Server{
-	//Handler: &MyServer{router},
+	//Handler: &MyServer{r},
 	//Addr:    "127.0.0.1:" + port,
 	//// Good practice: enforce timeouts for servers you create!
 	//WriteTimeout: 15 * time.Second,
 	//ReadTimeout:  15 * time.Second,
 	//}
 	//log.Println("Server started on port: " + port)
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:8080*"},
-		AllowCredentials: true,
-	})
+	//c := cors.New(cors.Options{
+	//AllowedOrigins:   []string{"*"},
+	//AllowCredentials: true,
+	//})
 
 	// Insert the middleware
-	handler := c.Handler(router)
-	log.Fatal(http.ListenAndServe(":3000", handler)) // pass the router as the 2nd argument to ListenAndServe
+	//handler := c.Handler(r)
+	//handler := cors.Default().Handler(r)
+	log.Fatal(http.ListenAndServe(":3000", &Server{r})) // pass the router as the 2nd argument to ListenAndServe
+}
+
+type Server struct {
+	r *httprouter.Router
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	s.r.ServeHTTP(w, r)
 }
 
 //type MyServer struct {
