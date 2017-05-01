@@ -8,8 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -274,7 +272,7 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 func Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "application/json")
+	//w.Header().Set("Content-Type", "application/json")
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -316,7 +314,7 @@ func Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func main() {
-	log.Println("Own Process Identifier: ", strconv.Itoa(os.Getpid()))
+	//log.Println("Own Process Identifier: ", strconv.Itoa(os.Getpid()))
 	db, err = sqlx.Open("mysql", "root:@/library")
 	if err != nil {
 		log.Println("Error connecting to db: ", err.Error())
@@ -332,14 +330,18 @@ func main() {
 	r := httprouter.New()
 	r.POST("/login", Login)
 
-	//c := cors.New(cors.Options{
-	//AllowedOrigins:   []string{"*"},
-	//AllowedMethods:   []string{"GET", "POST", "DELETE"},
-	//AllowCredentials: true,
-	//})
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:8080*"},
+		AllowedMethods:   []string{"GET", "POST", "DELETE"},
+		AllowCredentials: true,
+	})
 
-	handler := cors.Default().Handler(r)
+	// Why the Eff doesn't this work!
+	// https://github.com/rs/cors
+	handler := c.Handler(r)
 
+	//handler := cors.Default().Handler(r)
+	log.Println("Server running on port 3000")
 	log.Fatal(http.ListenAndServe(":3000", handler)) // pass the router as the 2nd argument to ListenAndServe
 }
 
