@@ -100,7 +100,7 @@ func GetBookByTitle(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(book)
 }
 
-func GetBooksByAuthor(w http.ResponseWriter, r *http.Request) {
+func GetBooksByAuthor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	vars := mux.Vars(r)
 	author := vars["author"]
 
@@ -135,11 +135,10 @@ func GetBooksBy(filter string, id interface{}) ([]Book, error) {
 	return result, nil
 }
 
-func GetBooks(w http.ResponseWriter, r *http.Request) {
+func GetBooks(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	vars := mux.Vars(r)
-	userId := vars["userId"]
+	userId := ps.ByName("userId")
 	var books []Book
 	err = db.Select(&books, "SELECT * FROM books WHERE userId = ?", userId)
 
@@ -269,10 +268,13 @@ func createAccount(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Follow this example to use Google authorization
+// https://cloud.google.com/go/getting-started/authenticate-users
+
 func Login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -329,18 +331,19 @@ func main() {
 
 	r := httprouter.New()
 	r.POST("/login", Login)
+	r.GET("/books/:userId", GetBooks)
 
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:8080*"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE"},
-		AllowCredentials: true,
-	})
+	//c := cors.New(cors.Options{
+	//AllowedOrigins:   []string{"*"},
+	//AllowedMethods:   []string{"GET", "POST", "DELETE"},
+	//AllowCredentials: true,
+	//})
 
 	// Why the Eff doesn't this work!
 	// https://github.com/rs/cors
-	handler := c.Handler(r)
+	//handler := c.Handler(r)
 
-	//handler := cors.Default().Handler(r)
+	handler := cors.Default().Handler(r)
 	log.Println("Server running on port 3000")
 	log.Fatal(http.ListenAndServe(":3000", handler)) // pass the router as the 2nd argument to ListenAndServe
 }
